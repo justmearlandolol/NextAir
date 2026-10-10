@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NextAir</title>
+<style>
+:root{
+  --bg:#e6edf8;
+  --card:#ffffff;
+  --line:#e3eaf4;
+  --navy:#0e2d55;
+  --navy2:#123a6a;
+  --text:#16233a;
+  --muted:#7386a3;
+  --dim:#8fa2bd;
+  --blue:#2f6fd6;
+  --blue-soft:#e5eefb;
+  --green:#22c55e;
+  --green-deep:#15803d;
+  --green-soft:#dcf5e7;
+  --seg-bg:#eef3fa;
+  --stat-bg:#eef4fb;
+  --dot-off:#c3cdda;
+  --toggle:#cfd9e8;
+  --title:#0e2d55;
+  --inv-text:#ffffff;
+}
+[data-theme="dark"]{
+  --bg:#0b1220;
+  --card:#121d33;
+  --line:#20304d;
+  --navy:#152641;
+  --text:#e8eef8;
+  --muted:#94a5c0;
+  --dim:#6b7d99;
+  --blue:#5b9aff;
+  --blue-soft:rgba(91,154,255,.16);
+  --green:#22c55e;
+  --green-deep:#7ce8a4;
+  --green-soft:rgba(34,197,94,.16);
+  --seg-bg:#1b2c49;
+  --stat-bg:#1b2c49;
+  --dot-off:#33435f;
+  --toggle:#33435f;
+  --title:#eaf1fb;
+  --inv-text:#0b1220;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;background:none;border:none;color:inherit;cursor:pointer}
+svg{display:block}
+#app{max-width:460px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+section{flex:1;display:flex;flex-direction:column;padding:0 18px 28px}
+[hidden]{display:none!important}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:22px 0 14px}
+.topbar .brand{font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--title)}
+.ssid{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);background:var(--card);border:1px solid var(--line);padding:4px 11px;border-radius:999px;margin-top:4px;box-shadow:0 1px 2px rgba(14,45,85,.04)}
+.ssid svg{width:11px;height:11px;color:var(--blue)}
+.burger{margin-left:auto;width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;color:var(--text);box-shadow:0 1px 3px rgba(14,45,85,.06);transition:.15s}
+.burger:hover{border-color:#c9d9ef;color:var(--blue)}
+[data-theme="dark"] .burger:hover{border-color:#3a4f73}
+.sbackdrop{position:fixed;inset:0;background:rgba(9,16,30,.45);z-index:85;opacity:0;pointer-events:none;transition:opacity .25s}
+.sbackdrop.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;right:0;bottom:0;width:min(320px,85%);background:var(--card);border-left:1px solid var(--line);z-index:90;transform:translateX(103%);transition:transform .28s ease;display:flex;flex-direction:column;padding:22px 20px;overflow-y:auto;box-shadow:-16px 0 40px rgba(9,16,30,.25)}
+.sidebar.open{transform:translateX(0)}
+.side-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.side-head b{font-size:18px;letter-spacing:-.3px;color:var(--text)}
+.side-close{width:34px;height:34px;border-radius:10px;background:var(--seg-bg);border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);transition:.15s}
+.side-close:hover{color:var(--text);border-color:var(--blue)}
+.side-sec{font-size:10.5px;letter-spacing:1.6px;color:var(--dim);text-transform:uppercase;font-weight:700;margin:14px 2px 8px}
+.side-row{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--seg-bg);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+.side-row .st b{display:block;font-size:13.5px;color:var(--text)}
+.side-row .st span{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+.switch{position:relative;width:46px;height:26px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch .slider{position:absolute;inset:0;background:var(--toggle);border-radius:999px;transition:.2s}
+.switch .slider::before{content:"";position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked + .slider{background:var(--blue)}
+.switch input:checked + .slider::before{transform:translateX(20px)}
+.num-input{width:92px;background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:13px;font-weight:700;padding:9px 10px;outline:none;text-align:right;flex-shrink:0}
+.num-input:focus{border-color:var(--blue)}
+
+.page-title{font-size:23px;font-weight:800;letter-spacing:-.4px;margin-top:8px;color:var(--title)}
+.page-sub{font-size:12.5px;color:var(--muted);margin:6px 0 18px}
+
+.dev{width:100%;display:flex;align-items:center;gap:14px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(14,45,85,.05);transition:box-shadow .15s,transform .15s,border-color .15s}
+.dev:hover{border-color:#c9d9ef;box-shadow:0 10px 24px rgba(14,45,85,.10);transform:translateY(-1px)}
+[data-theme="dark"] .dev:hover,[data-theme="dark"] .backbtn:hover{border-color:#3a4f73}
+.dev-ic{width:46px;height:46px;border-radius:14px;background:var(--blue-soft);display:grid;place-items:center;color:var(--blue);flex-shrink:0}
+.dev.off .dev-ic{background:var(--seg-bg);color:var(--dim)}
+.dev-info{flex:1;min-width:0}
+.dev-info b{display:block;font-size:14.5px;color:var(--text)}
+.dev-info .loc{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.dev-status{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;margin-top:8px;color:var(--muted)}
+.dev-status.on{color:var(--green-deep)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--dot-off);flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+
+.backbtn{width:38px;height:38px;border-radius:12px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);box-shadow:0 1px 2px rgba(14,45,85,.04)}
+.backbtn:hover{color:var(--blue);border-color:#c9d9ef}
+.dev-title{flex:1}
+.dev-title b{display:block;font-size:15px;color:var(--text)}
+.dev-title span{font-size:11.5px;color:var(--muted)}
+
+.hero{background:var(--navy);border-radius:26px;padding:24px 20px 26px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 14px 30px rgba(14,45,85,.22)}
+.hero .roomnow{font-size:12px;color:#a9c0e0}
+.hero .roomnow b{color:#8fd6a9;font-weight:600}
+.dial{position:relative;width:192px;height:192px;display:grid;place-items:center;margin:4px 0}
+.dial svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.dial .track{fill:none;stroke:rgba(255,255,255,.10);stroke-width:10}
+.dial .arc{fill:none;stroke:#4d94ff;stroke-width:10;stroke-linecap:round;stroke-dasharray:0 502.65;transition:stroke-dasharray .35s ease}
+.dial-mid{display:flex;align-items:flex-start;justify-content:center}
+.dial-mid b{font-size:60px;font-weight:200;letter-spacing:-2px;line-height:1;color:#fff}
+.dial-mid span{font-size:19px;color:#a9c0e0;margin-top:9px;font-weight:300}
+.temp-row{display:flex;align-items:center;gap:26px}
+.step{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;color:#fff;transition:.15s}
+.step:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)}
+.step:active{transform:scale(.92)}
+.hero .humid{font-size:12px;color:#a9c0e0}
+
+.powerbtn{width:100%;margin-top:16px;display:flex;align-items:center;justify-content:center;gap:10px;padding:15px;border-radius:16px;background:var(--card);border:1px solid var(--line);font-size:14px;font-weight:700;color:var(--muted);box-shadow:0 1px 3px rgba(14,45,85,.06);transition:.15s}
+.powerbtn.on{background:var(--green);border-color:var(--green);color:var(--inv-text);box-shadow:0 8px 20px rgba(34,197,94,.35)}
+.powerbtn:active{transform:scale(.98)}
+
+.seg{display:flex;gap:6px;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:5px;box-shadow:0 1px 3px rgba(14,45,85,.05)}
+.seg button{flex:1;padding:11px 0;border-radius:12px;font-size:12.5px;font-weight:700;color:var(--muted);transition:.15s}
+.seg button.on{background:var(--blue);color:var(--inv-text);box-shadow:0 4px 12px rgba(47,111,214,.30)}
+.seg-label{font-size:10.5px;letter-spacing:1.6px;color:var(--dim);text-transform:uppercase;margin:16px 4px 0;font-weight:700}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;margin-top:16px;box-shadow:0 1px 3px rgba(14,45,85,.05)}
+.chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.chart-head b{font-size:14px;color:var(--text)}
+.daytabs{display:flex;background:var(--seg-bg);border-radius:10px;padding:3px;gap:2px}
+.daytabs button{font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px;border-radius:8px}
+.daytabs button.on{background:var(--blue);color:var(--inv-text)}
+#chart{width:100%;height:190px;display:block;cursor:crosshair}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stat{background:var(--stat-bg);border-radius:14px;padding:12px 10px;text-align:center}
+.stat b{display:block;font-size:15px;color:var(--blue)}
+.stat span{display:block;font-size:9.5px;letter-spacing:.8px;color:var(--dim);margin-top:4px;text-transform:uppercase}
+.chart-note{font-size:10.5px;color:var(--dim);margin-top:12px;text-align:center}
+
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;border:1px solid rgba(255,255,255,.10);font-size:13px;padding:11px 20px;border-radius:12px;opacity:0;transition:.25s;z-index:80;pointer-events:none;white-space:nowrap;box-shadow:0 12px 28px rgba(14,45,85,.30)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#tip{position:fixed;background:var(--navy);border:1px solid rgba(255,255,255,.10);color:#fff;font-size:11.5px;padding:7px 10px;border-radius:8px;z-index:70;pointer-events:none;white-space:nowrap;box-shadow:0 8px 20px rgba(14,45,85,.25)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section id="scr-devices">
+  <header class="topbar">
+    <div>
+      <span class="brand">NextAir</span><br>
+      <span class="ssid" id="ssidBadge"></span>
+    </div>
+    <button class="burger" onclick="openSettings()" aria-label="Pengaturan">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </header>
+  <h2 class="page-title">AC di Wi-Fi Rumah</h2>
+  <p class="page-sub" id="devCount"></p>
+  <div id="devList"></div>
+</section>
+
+<section id="scr-device" hidden>
+  <header class="topbar">
+    <button class="backbtn" onclick="closeDevice()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <div class="dev-title"><b id="curName"></b><span id="curRoom"></span></div>
+    <span class="dot" id="curDot"></span>
+  </header>
+
+  <div class="hero">
+    <span class="roomnow" id="curRoomTemp"></span>
+    <div class="temp-row">
+      <button class="step" onclick="stepTemp(-1)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+      </button>
+      <div class="dial">
+        <svg viewBox="0 0 192 192">
+          <circle class="track" cx="96" cy="96" r="80"/>
+          <circle class="arc" id="dialArc" cx="96" cy="96" r="80"/>
+        </svg>
+        <div class="dial-mid"><b id="curTemp"></b><span>°C</span></div>
+      </div>
+      <button class="step" onclick="stepTemp(1)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+    <span class="humid" id="curHum"></span>
+  </div>
+
+  <button class="powerbtn" id="powerBtn" onclick="togglePower()">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>
+    <span id="powerLbl"></span>
+  </button>
+
+  <p class="seg-label">Mode</p>
+  <div class="seg" id="modeSeg"></div>
+  <p class="seg-label">Kecepatan Kipas</p>
+  <div class="seg" id="fanSeg"></div>
+
+  <div class="card">
+    <div class="chart-head">
+      <b>Pemakaian 24 Jam</b>
+      <div class="daytabs">
+        <button id="tabToday" onclick="setDay('today')">Hari Ini</button>
+        <button id="tabYest" onclick="setDay('yesterday')">Kemarin</button>
+      </div>
+    </div>
+    <canvas id="chart"></canvas>
+    <div class="stats">
+      <div class="stat"><b id="stKwh"></b><span>kWh</span></div>
+      <div class="stat"><b id="stLed"></b><span id="stLedLbl">Setara Lampu LED</span></div>
+      <div class="stat"><b id="stOn"></b><span>Perkiraan Nyala</span></div>
+    </div>
+    <p class="chart-note">Diperbarui otomatis tiap jam · satuan Wh per jam</p>
+  </div>
+</section>
+
+</div>
+
+<div class="sbackdrop" id="sBackdrop" onclick="closeSettings()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="side-head">
+    <b>Pengaturan</b>
+    <button class="side-close" onclick="closeSettings()" aria-label="Tutup">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <p class="side-sec">Tampilan</p>
+  <div class="side-row">
+    <div class="st"><b>Mode Gelap</b><span>Ubah tampilan aplikasi jadi gelap</span></div>
+    <label class="switch"><input type="checkbox" id="darkToggle" onchange="toggleTheme()"><span class="slider"></span></label>
+  </div>
+  <p class="side-sec">Pembanding Energi</p>
+  <div class="side-row">
+    <div class="st"><b>Daya Lampu LED</b><span>Dipakai untuk stat Setara Lampu LED di chart</span></div>
+    <input type="number" id="ledwInput" class="num-input" min="1" max="100" step="1" onchange="setLedW(this.value)">
+  </div>
+</aside>
+
+<div id="toast"></div>
+<div id="tip" hidden></div>
+
+<script>
+const App = {
+  mode: "mock",
+  devices: [],
+  cur: null,
+  hours: [],
+  day: "today",
+  timer: null,
+  sock: null
+};
+
+const DRAW = { cool: 700, dry: 300, fan: 60 };
+let LEDW = 10;
+let DARK = false;
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+const MODES = [["cool","Dingin"],["dry","Kering"],["fan","Kipas"]];
+const FANS = [["auto","Auto"],["low","Rendah"],["high","Tinggi"]];
+const PATTERN = [0,0,0,0,0,0,12,28,42,36,18,8,0,0,0,6,18,38,55,60,44,26,12,4];
+const DIAL_C = 2 * Math.PI * 80;
+
+const todayStr = () => {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+};
+const dateStr = (offset) => {
+  const d = new Date(Date.now() - offset*86400000);
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+};
+
+const Mock = {
+  devices: [
+    { _id:"d1", name:"AC Ruang Keluarga", brand:"Hisense", room:"Ruang Keluarga", ip:"192.168.1.21", ssid:"Keluarga-5G", online:true, power:true, mode:"cool", temp:24, fan:"auto", roomTemp:26.8, humidity:61 },
+    { _id:"d2", name:"AC Kamar Nathan", brand:"Hisense", room:"Kamar Nathan", ip:"192.168.1.22", ssid:"Keluarga-5G", online:true, power:false, mode:"cool", temp:25, fan:"low", roomTemp:29.1, humidity:58 },
+    { _id:"d3", name:"AC Kamar Toby", brand:"Sharp", room:"Kamar Toby", ip:"192.168.1.23", ssid:"Keluarga-5G", online:false, power:false, mode:"fan", temp:26, fan:"high", roomTemp:30.4, humidity:64 }
+  ],
+  usage: { d1:{}, d2:{}, d3:{} },
+  ensure(id, ds){
+    const d = this.devices.find(x=>x._id===id);
+    if(!this.usage[id][ds]){
+      const arr = Array(24).fill(0);
+      if(ds === todayStr()){
+        if(d.power){ const h = new Date().getHours(); for(let i=0;i<h;i++) arr[i] = Math.round(PATTERN[i]*(0.5+Math.random()*0.6)); }
+      } else {
+        for(let i=0;i<24;i++) arr[i] = Math.round(PATTERN[i]*(0.6+Math.random()*0.8));
+      }
+      this.usage[id][ds] = arr;
+    }
+    return this.usage[id][ds];
+  },
+  command(id, body){
+    const d = this.devices.find(x=>x._id===id);
+    if(!d) return null;
+    if(typeof body.power === "boolean") d.power = body.power;
+    if(typeof body.temp === "number") d.temp = Math.min(30, Math.max(16, Math.round(body.temp)));
+    if(body.mode) d.mode = body.mode;
+    if(body.fan) d.fan = body.fan;
+    return d;
+  },
+  tick(){
+    const h = new Date().getHours();
+    const ds = todayStr();
+    for(const d of this.devices){
+      if(d.power && d.online) d.roomTemp = Math.max(21, +(d.roomTemp - 0.05).toFixed(1));
+      else d.roomTemp = Math.min(32, +(d.roomTemp + 0.07).toFixed(1));
+      d.humidity = Math.max(40, Math.min(75, +(d.humidity + (d.power ? -0.2 : 0.2)).toFixed(1)));
+      if(d.power && d.online) this.ensure(d._id, ds)[h] += DRAW[d.mode]*5/60;
+    }
+  }
+};
+
+async function api(url, opts){
+  return await fetch(url, opts);
+}
+
+async function loadDevices(){
+  if(App.mode === "server"){
+    const r = await api("/api/devices");
+    const j = await r.json();
+    App.devices = j.devices;
+    return j.ssid;
+  }
+  App.devices = Mock.devices;
+  return "Keluarga-5G";
+}
+
+async function sendCommand(body){
+  let d;
+  if(App.mode === "server"){
+    const r = await api("/api/devices/" + App.cur._id + "/command", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+    d = await r.json();
+  } else {
+    d = Mock.command(App.cur._id, body);
+  }
+  if(d){
+    const i = App.devices.findIndex(x=>x._id===d._id);
+    if(i >= 0) App.devices[i] = d;
+    App.cur = d;
+  }
+  renderDevice();
+}
+
+async function loadUsage(){
+  const ds = App.day === "today" ? todayStr() : dateStr(1);
+  if(App.mode === "server"){
+    const r = await api("/api/devices/" + App.cur._id + "/usage?date=" + ds);
+    const j = await r.json();
+    App.hours = j.hours;
+  } else {
+    App.hours = Mock.ensure(App.cur._id, ds).slice();
+  }
+}
+
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>t.classList.remove("show"), 1600);
+}
+
+function show(screen){
+  ["scr-devices","scr-device"].forEach(id=>{
+    document.getElementById(id).hidden = id !== screen;
+  });
+}
+
+function chartTheme(){
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  return dark
+    ? { grid:"rgba(255,255,255,.07)", label:"#6b7d99", now:"#5b9aff", bar:"rgba(91,154,255,.45)", future:"rgba(255,255,255,.07)" }
+    : { grid:"rgba(14,45,85,.07)", label:"#8fa2bd", now:"#2f6fd6", bar:"rgba(47,111,214,.42)", future:"rgba(14,45,85,.07)" };
+}
+
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", DARK ? "dark" : "light");
+  if(App.cur && !document.getElementById("scr-device").hidden) drawChart();
+}
+
+function toggleTheme(){
+  DARK = !DARK;
+  store.set("smartac_dark", DARK ? "1" : "0");
+  applyTheme();
+  syncSettings();
+}
+
+function setLedW(v){
+  const n = Math.min(100, Math.max(1, Math.round(Number(v) || 10)));
+  LEDW = n;
+  store.set("smartac_ledw", String(n));
+  updateStats();
+  toast("Daya lampu pembanding: " + n + " Watt");
+}
+
+function syncSettings(){
+  document.getElementById("darkToggle").checked = DARK;
+  document.getElementById("ledwInput").value = LEDW;
+}
+
+function openSettings(){
+  syncSettings();
+  document.getElementById("sidebar").classList.add("open");
+  document.getElementById("sBackdrop").classList.add("show");
+}
+
+function closeSettings(){
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sBackdrop").classList.remove("show");
+}
+
+async function boot(){
+  DARK = store.get("smartac_dark") === "1";
+  LEDW = Math.min(100, Math.max(1, Math.round(Number(store.get("smartac_ledw")) || 10)));
+  applyTheme();
+  try{
+    const cfg = await Promise.race([
+      fetch("/api/config").then(r=>r.ok?r.json():null).catch(()=>null),
+      new Promise(r=>setTimeout(()=>r(null), 1500))
+    ]);
+    if(cfg && cfg.server) App.mode = "server";
+  }catch(e){}
+  enterApp();
+}
+
+async function enterApp(){
+  const ssid = await loadDevices();
+  document.getElementById("ssidBadge").innerHTML = wifiSvg() + " " + ssid;
+  renderDeviceList();
+  show("scr-devices");
+  if(App.timer) clearInterval(App.timer);
+  App.timer = setInterval(async ()=>{
+    if(App.mode === "mock") Mock.tick();
+    if(!document.getElementById("scr-devices").hidden){
+      if(App.mode === "mock") renderDeviceList();
+    }
+    if(!document.getElementById("scr-device").hidden && App.cur){
+      if(App.mode === "mock"){
+        App.cur = Mock.devices.find(d=>d._id===App.cur._id);
+        await loadUsage();
+        renderDevice();
+      }
+    }
+  }, App.mode === "mock" ? 5000 : 30000);
+  if(App.mode === "server") connectSocket();
+}
+
+function connectSocket(){
+  try{
+    const s = document.createElement("script");
+    s.src = "/socket.io/socket.io.js";
+    s.onload = ()=>{
+      App.sock = io();
+      App.sock.on("state", (d)=>{
+        const i = App.devices.findIndex(x=>x._id===d._id);
+        if(i >= 0) App.devices[i] = d;
+        if(App.cur && App.cur._id === d._id){ App.cur = d; renderDevice(); }
+        if(!document.getElementById("scr-devices").hidden) renderDeviceList();
+      });
+    };
+    document.head.appendChild(s);
+  }catch(e){}
+}
+
+function wifiSvg(){
+  return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 9.5a15 15 0 0 1 20 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg>';
+}
+
+function acSvg(){
+  return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="2.5" y="4" width="19" height="9" rx="2.5"/><path d="M2.5 10h19"/><path d="M7 16.5c0 1.5 1 1.5 1 3M12 16.5c0 1.5 1 1.5 1 3M17 16.5c0 1.5 1 1.5 1 3"/><circle cx="7.5" cy="7" r="1" fill="currentColor" stroke="none"/></svg>';
+}
+
+function renderDeviceList(){
+  const online = App.devices.filter(d=>d.online).length;
+  document.getElementById("devCount").textContent = App.devices.length + " unit terdeteksi · " + online + " online";
+  const el = document.getElementById("devList");
+  el.innerHTML = "";
+  App.devices.forEach(d=>{
+    const b = document.createElement("button");
+    b.className = "dev" + (d.online ? "" : " off");
+    b.onclick = ()=>openDevice(d._id);
+    b.innerHTML =
+      '<span class="dev-ic">' + acSvg() + "</span>" +
+      '<span class="dev-info"><b>' + d.name + " · " + d.brand + "</b>" +
+      '<span class="loc">' + d.room + " · " + d.ip + "</span>" +
+      '<span class="dev-status' + (d.power ? " on" : "") + '">' + (d.power ? "Nyala · setelan " + d.temp + "°C" : "Mati") + " · ruangan " + d.roomTemp + "°C</span></span>" +
+      '<span class="dot' + (d.online ? " on" : "") + '"></span>';
+    el.appendChild(b);
+  });
+}
+
+async function openDevice(id){
+  App.cur = App.devices.find(d=>d._id===id) || null;
+  if(!App.cur) return;
+  App.day = "today";
+  document.getElementById("tabToday").className = "on";
+  document.getElementById("tabYest").className = "";
+  await loadUsage();
+  renderDevice();
+  show("scr-device");
+}
+
+function closeDevice(){
+  enterApp();
+}
+
+function renderDevice(){
+  const d = App.cur;
+  if(!d) return;
+  document.getElementById("curName").textContent = d.name;
+  document.getElementById("curRoom").textContent = d.brand + " · " + d.room + " · " + d.ip;
+  document.getElementById("curDot").className = "dot" + (d.online ? " on" : "");
+  document.getElementById("curRoomTemp").innerHTML = "Suhu ruangan saat ini <b>" + d.roomTemp + "°C</b>";
+  document.getElementById("curTemp").textContent = d.temp;
+  document.getElementById("curHum").textContent = "Kelembapan " + d.humidity + "%";
+  const pct = Math.min(1, Math.max(0, (d.temp - 16) / 14));
+  document.getElementById("dialArc").setAttribute("stroke-dasharray", (pct * DIAL_C).toFixed(1) + " " + DIAL_C.toFixed(1));
+  const pb = document.getElementById("powerBtn");
+  pb.className = "powerbtn" + (d.power ? " on" : "");
+  document.getElementById("powerLbl").textContent = d.power ? "AC Menyala — tap untuk matikan" : "AC Mati — tap untuk nyalakan";
+  renderSeg("modeSeg", MODES, d.mode, (v)=>sendCommand({ mode: v }));
+  renderSeg("fanSeg", FANS, d.fan, (v)=>sendCommand({ fan: v }));
+  drawChart();
+  updateStats();
+}
+
+function renderSeg(id, options, active, onPick){
+  const el = document.getElementById(id);
+  el.innerHTML = "";
+  options.forEach(([v, label])=>{
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.className = v === active ? "on" : "";
+    b.onclick = ()=>onPick(v);
+    el.appendChild(b);
+  });
+}
+
+function stepTemp(delta){
+  if(!App.cur) return;
+  const t = Math.min(30, Math.max(16, App.cur.temp + delta));
+  if(t === App.cur.temp) return;
+  sendCommand({ temp: t });
+  toast("Setelan suhu " + t + "°C terkirim");
+}
+
+function togglePower(){
+  if(!App.cur) return;
+  const willOn = !App.cur.power;
+  sendCommand({ power: willOn });
+  toast("Perintah " + (willOn ? "menyalakan" : "mematikan") + " AC terkirim");
+}
+
+async function setDay(day){
+  App.day = day;
+  document.getElementById("tabToday").className = day === "today" ? "on" : "";
+  document.getElementById("tabYest").className = day === "yesterday" ? "on" : "";
+  await loadUsage();
+  drawChart();
+  updateStats();
+}
+
+function updateStats(){
+  const wh = App.hours.reduce((a,b)=>a+b, 0);
+  document.getElementById("stKwh").textContent = (wh/1000).toFixed(2);
+  const hrs = wh / LEDW;
+  document.getElementById("stLed").textContent = (hrs >= 100 ? Math.round(hrs).toLocaleString("id-ID") : hrs.toFixed(1)) + " jam";
+  document.getElementById("stLedLbl").textContent = "Setara Lampu LED " + LEDW + "W";
+  const draw = App.cur ? (DRAW[App.cur.mode] || 700) : 700;
+  document.getElementById("stOn").textContent = (wh/draw).toFixed(1) + " jam";
+}
+
+function rr(ctx, x, y, w, h, r){
+  r = Math.min(r, w/2, h);
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h);
+  ctx.lineTo(x, y+h);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+function drawChart(){
+  const cv = document.getElementById("chart");
+  if(!cv || !App.hours.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth || 320;
+  const H = 190;
+  cv.width = W * dpr;
+  cv.height = H * dpr;
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const padL = 34, padR = 4, padT = 10, padB = 22;
+  const cw = W - padL - padR, ch = H - padT - padB;
+  const maxV = Math.max(60, ...App.hours);
+  const nice = Math.ceil(maxV / 25) * 25;
+  const T = chartTheme();
+  ctx.font = "10px system-ui, sans-serif";
+  for(let i = 0; i <= 4; i++){
+    const y = padT + ch - (ch * i / 4);
+    ctx.strokeStyle = T.grid;
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(W - padR, y);
+    ctx.stroke();
+    ctx.fillStyle = T.label;
+    ctx.fillText(String(Math.round(nice * i / 4)), 6, y + 3);
+  }
+  const step = cw / 24;
+  const bw = Math.max(4, step - 5);
+  const isToday = App.day === "today";
+  const nowH = new Date().getHours();
+  App.hours.forEach((v, h)=>{
+    const x = padL + h * step + (step - bw) / 2;
+    const bh = Math.max(v > 0 ? 3 : 0, ch * (v / nice));
+    const y = padT + ch - bh;
+    if(isToday && h === nowH) ctx.fillStyle = T.now;
+    else if(isToday && h > nowH) ctx.fillStyle = T.future;
+    else ctx.fillStyle = T.bar;
+    rr(ctx, x, y, bw, bh, 3);
+    ctx.fill();
+    if(h % 3 === 0){
+      ctx.fillStyle = T.label;
+      ctx.fillText(String(h).padStart(2, "0"), x - 1, H - 8);
+    }
+  });
+  cv.onmousemove = (e)=>{
+    const rect = cv.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const h = Math.floor((px - padL) / step);
+    if(h >= 0 && h < 24){
+      const v = App.hours[h];
+      const tip = document.getElementById("tip");
+      tip.hidden = false;
+      tip.textContent = String(h).padStart(2,"0") + ":00 — " + Math.round(v) + " Wh";
+      tip.style.left = Math.min(e.clientX + 12, window.innerWidth - 110) + "px";
+      tip.style.top = (e.clientY - 34) + "px";
+    }
+  };
+  cv.onmouseleave = ()=>{ document.getElementById("tip").hidden = true; };
+}
+
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Escape") closeSettings();
+});
+
+boot();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a486f23b7bff9e34',t:'MTc5MTY0OTE2MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
