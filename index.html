@@ -98,6 +98,25 @@ section{flex:1;display:flex;flex-direction:column;padding:0 18px 28px}
 .dev-status.on{color:var(--green-deep)}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--dot-off);flex-shrink:0}
 .dot.on{background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.dev-main{flex:1;display:flex;align-items:center;gap:14px;text-align:left;min-width:0}
+.dev-del{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--dim);transition:.15s;flex-shrink:0}
+.dev-del:hover{color:#ef4444;background:rgba(239,68,68,.14)}
+.empty{width:100%;background:var(--card);border:1px dashed var(--line);border-radius:20px;padding:36px 22px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.empty svg{color:var(--dim);margin-bottom:10px}
+.empty b{font-size:14.5px;color:var(--text)}
+.empty span{font-size:12px;color:var(--muted);line-height:1.55;max-width:290px;margin-top:6px}
+.dlgwrap{position:fixed;inset:0;background:rgba(9,16,30,.45);z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.dlgwrap.show{opacity:1;pointer-events:auto}
+.dlg{width:100%;max-width:320px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 20px 50px rgba(9,16,30,.35);transform:translateY(8px);transition:transform .2s}
+.dlgwrap.show .dlg{transform:none}
+.dlg b{display:block;font-size:16px;color:var(--text)}
+.dlg .dname{display:block;font-size:13px;color:var(--muted);margin:8px 0 2px;line-height:1.5}
+.dlg p{font-size:12px;color:var(--dim);line-height:1.55;margin:10px 0 18px}
+.dlg-btns{display:flex;gap:8px}
+.btn-ghost{flex:1;padding:12px;border-radius:12px;background:var(--seg-bg);border:1px solid var(--line);font-size:13px;font-weight:700;color:var(--muted);transition:.15s}
+.btn-ghost:hover{color:var(--text)}
+.btn-danger{flex:1;padding:12px;border-radius:12px;background:#ef4444;color:#fff;font-size:13px;font-weight:700;border:none;transition:.15s}
+.btn-danger:hover{background:#dc2626}
 
 .backbtn{width:38px;height:38px;border-radius:12px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);box-shadow:0 1px 2px rgba(14,45,85,.04)}
 .backbtn:hover{color:var(--blue);border-color:#c9d9ef}
@@ -245,6 +264,18 @@ section{flex:1;display:flex;flex-direction:column;padding:0 18px 28px}
   </div>
 </aside>
 
+<div class="dlgwrap" id="dlgDelete">
+  <div class="dlg">
+    <b>Hapus AC ini?</b>
+    <span class="dname" id="dlgName"></span>
+    <p>Perangkat akan dihapus dari daftar beserta riwayat pemakaiannya. Perangkat keras asli bisa muncul kembali otomatis saat menyala dan mendaftar ulang.</p>
+    <div class="dlg-btns">
+      <button class="btn-ghost" onclick="cancelDelete()">Batal</button>
+      <button class="btn-danger" onclick="confirmDelete()">Hapus</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <div id="tip" hidden></div>
 
@@ -256,7 +287,8 @@ const App = {
   hours: [],
   day: "today",
   timer: null,
-  sock: null
+  sock: null,
+  delId: null
 };
 
 const DRAW = { cool: 700, dry: 300, fan: 60 };
@@ -436,7 +468,7 @@ async function boot(){
 
 async function enterApp(){
   const ssid = await loadDevices();
-  document.getElementById("ssidBadge").innerHTML = wifiSvg() + " " + ssid;
+  document.getElementById("ssidBadge").innerHTML = wifiSvg() + " " + (App.devices.length ? ssid : "Menunggu perangkat");
   renderDeviceList();
   show("scr-devices");
   if(App.timer) clearInterval(App.timer);
@@ -465,8 +497,12 @@ function connectSocket(){
       App.sock.on("state", (d)=>{
         const i = App.devices.findIndex(x=>x._id===d._id);
         if(i >= 0) App.devices[i] = d;
+        else App.devices.push(d);
         if(App.cur && App.cur._id === d._id){ App.cur = d; renderDevice(); }
         if(!document.getElementById("scr-devices").hidden) renderDeviceList();
+      });
+      App.sock.on("device:deleted", (m)=>{
+        if(m && m.id) removeLocal(m.id);
       });
     };
     document.head.appendChild(s);
@@ -481,23 +517,87 @@ function acSvg(){
   return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="2.5" y="4" width="19" height="9" rx="2.5"/><path d="M2.5 10h19"/><path d="M7 16.5c0 1.5 1 1.5 1 3M12 16.5c0 1.5 1 1.5 1 3M17 16.5c0 1.5 1 1.5 1 3"/><circle cx="7.5" cy="7" r="1" fill="currentColor" stroke="none"/></svg>';
 }
 
+function trashSvg(){
+  return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+}
+
+function emptySvg(){
+  return '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="9" rx="2.5"/><path d="M2.5 10h19"/><path d="M7 16.5c0 1.5 1 1.5 1 3M12 16.5c0 1.5 1 1.5 1 3M17 16.5c0 1.5 1 1.5 1 3"/></svg>';
+}
+
 function renderDeviceList(){
   const online = App.devices.filter(d=>d.online).length;
-  document.getElementById("devCount").textContent = App.devices.length + " unit terdeteksi · " + online + " online";
+  document.getElementById("devCount").textContent = App.devices.length
+    ? App.devices.length + " unit terdeteksi · " + online + " online"
+    : "0 unit · menunggu perangkat";
   const el = document.getElementById("devList");
   el.innerHTML = "";
+  if(!App.devices.length){
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.innerHTML = emptySvg() + "<b>Belum ada AC terdeteksi</b><span>Nyalakan perangkat NextAir (ESP32) yang terhubung ke server ini — AC asli akan muncul otomatis di daftar.</span>";
+    el.appendChild(d);
+    return;
+  }
   App.devices.forEach(d=>{
-    const b = document.createElement("button");
-    b.className = "dev" + (d.online ? "" : " off");
-    b.onclick = ()=>openDevice(d._id);
-    b.innerHTML =
+    const card = document.createElement("div");
+    card.className = "dev" + (d.online ? "" : " off");
+    const main = document.createElement("button");
+    main.className = "dev-main";
+    main.onclick = ()=>openDevice(d._id);
+    main.innerHTML =
       '<span class="dev-ic">' + acSvg() + "</span>" +
       '<span class="dev-info"><b>' + d.name + " · " + d.brand + "</b>" +
       '<span class="loc">' + d.room + " · " + d.ip + "</span>" +
       '<span class="dev-status' + (d.power ? " on" : "") + '">' + (d.power ? "Nyala · setelan " + d.temp + "°C" : "Mati") + " · ruangan " + d.roomTemp + "°C</span></span>" +
       '<span class="dot' + (d.online ? " on" : "") + '"></span>';
-    el.appendChild(b);
+    const del = document.createElement("button");
+    del.className = "dev-del";
+    del.setAttribute("aria-label", "Hapus " + d.name);
+    del.innerHTML = trashSvg();
+    del.onclick = ()=>askDelete(d._id);
+    card.appendChild(main);
+    card.appendChild(del);
+    el.appendChild(card);
   });
+}
+
+function askDelete(id){
+  App.delId = id;
+  const d = App.devices.find(x=>x._id===id);
+  document.getElementById("dlgName").textContent = d ? (d.name + " · " + d.brand + " · " + d.room) : "";
+  document.getElementById("dlgDelete").classList.add("show");
+}
+
+function cancelDelete(){
+  App.delId = null;
+  document.getElementById("dlgDelete").classList.remove("show");
+}
+
+async function confirmDelete(){
+  const id = App.delId;
+  cancelDelete();
+  if(!id) return;
+  if(App.mode === "server"){
+    const r = await api("/api/devices/" + id, { method: "DELETE" });
+    if(!r.ok){ toast("Gagal menghapus perangkat"); return; }
+  } else {
+    const i = Mock.devices.findIndex(x=>x._id===id);
+    if(i >= 0) Mock.devices.splice(i, 1);
+  }
+  removeLocal(id);
+  toast("Perangkat dihapus dari daftar");
+}
+
+function removeLocal(id){
+  const i = App.devices.findIndex(x=>x._id===id);
+  if(i >= 0) App.devices.splice(i, 1);
+  if(App.cur && App.cur._id === id){
+    App.cur = null;
+    enterApp();
+  } else {
+    renderDeviceList();
+  }
 }
 
 async function openDevice(id){
@@ -656,10 +756,10 @@ function drawChart(){
 }
 
 document.addEventListener("keydown", (e)=>{
-  if(e.key === "Escape") closeSettings();
+  if(e.key === "Escape"){ closeSettings(); cancelDelete(); }
 });
 
 boot();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a486f23b7bff9e34',t:'MTc5MTY0OTE2MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
