@@ -6,7 +6,7 @@ import * as db from "./MongoDB";
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGO_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/smartac";
-const COST_PER_KWH = Number(process.env.COST_PER_KWH || 1400);
+const LED_WATT = Number(process.env.LED_WATT || 10);
 const SIM_TICK_MS = Number(process.env.SIM_TICK_MS || 30000);
 
 const DRAW: Record<string, number> = { cool: 700, dry: 300, fan: 60 };
@@ -18,7 +18,7 @@ const http = createServer(app);
 const io = new Server(http);
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "..", "Frontend")));
+app.use(express.static(path.join(__dirname, "public")));
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const dateStr = (offsetDays: number) => new Date(Date.now() - offsetDays * 86400000).toISOString().slice(0, 10);
@@ -29,6 +29,40 @@ app.get("/api/config", (_req, res) => {
 
 app.get("/api/devices", async (_req, res) => {
   res.json(await db.listDevices());
+});
+
+app.post("/api/devices/register", async (req, res) => {
+  const b: any = req.body || {};
+  if (!b.name) {
+    res.status(400).json({ error: "name wajib" });
+    return;
+  }
+  const d = await db.createDevice({
+    name: String(b.name),
+    brand: String(b.brand || "Umum"),
+    room: String(b.room || "-"),
+    ip: String(b.ip || ""),
+    ssid: String(b.ssid || ""),
+    online: true,
+    power: false,
+    mode: "cool",
+    temp: 24,
+    fan: "auto",
+    roomTemp: 28,
+    humidity: 60
+  });
+  io.emit("state", d);
+  res.json(d);
+});
+
+app.delete("/api/devices/:id", async (req, res) => {
+  const ok = await db.deleteDevice(req.params.id);
+  if (!ok) {
+    res.status(404).json({ error: "device tidak ditemukan" });
+    return;
+  }
+  io.emit("device:deleted", { id: req.params.id });
+  res.json({ ok: true });
 });
 
 app.post("/api/devices/:id/command", async (req, res) => {
@@ -43,7 +77,7 @@ app.post("/api/devices/:id/command", async (req, res) => {
     res.status(404).json({ error: "device tidak ditemukan" });
     return;
   }
-await db.logCommand(d._id, "api", b);
+  await db.logCommand(d._id, b);
   io.emit("state", d);
   res.json(d);
 });
@@ -63,13 +97,33 @@ app.get("/api/devices/:id/summary", async (req, res) => {
   const hours = await db.getUsage(d._id, todayStr());
   const wh = hours.reduce((a, b) => a + b, 0);
   const draw = DRAW[d.mode] || 700;
-  res.json({ wh, kwh: +(wh / 1000).toFixed(2), cost: Math.round((wh / 1000) * COST_PER_KWH), onHours: +(wh / draw).toFixed(1) });
+  res.json({ wh, kwh: +(wh / 1000).toFixed(2), ledHours: +(wh / LED_WATT).toFixed(1), onHours: +(wh / draw).toFixed(1) });
 });
 
 io.on("connection", (socket) => {
   socket.on("device:register", async (msg: any) => {
-    const d = msg && msg.id ? await db.patchDevice(msg.id, { online: true }) : null;
-    if (d) io.emit("state", d);
+    if (msg && msg.id) {
+      const d = await db.patchDevice(msg.id, { online: true });
+      if (d) io.emit("state", d);
+      return;
+    }
+    if (msg && msg.name) {
+      const d = await db.createDevice({
+        name: String(msg.name),
+        brand: String(msg.brand || "Umum"),
+        room: String(msg.room || "-"),
+        ip: String(msg.ip || ""),
+        ssid: String(msg.ssid || ""),
+        online: true,
+        power: false,
+        mode: "cool",
+        temp: 24,
+        fan: "auto",
+        roomTemp: 28,
+        humidity: 60
+      });
+      io.emit("state", d);
+    }
   });
   socket.on("device:telemetry", async (msg: any) => {
     const patch: any = {};
@@ -81,7 +135,7 @@ io.on("connection", (socket) => {
 });
 
 async function seed() {
-  if ((await db.countDevices()) > 0) return;
+  if (await db.isSeeded()) return;
   const created = await db.createDevices([
     { name: "AC Ruang Keluarga", brand: "Hisense", room: "Ruang Keluarga", ip: "192.168.1.21", ssid: "Keluarga-5G", online: true, power: true, mode: "cool", temp: 24, fan: "auto", roomTemp: 26.8, humidity: 61 },
     { name: "AC Kamar Nathan", brand: "Hisense", room: "Kamar Nathan", ip: "192.168.1.22", ssid: "Keluarga-5G", online: true, power: false, mode: "cool", temp: 25, fan: "low", roomTemp: 29.1, humidity: 58 },
@@ -95,6 +149,7 @@ async function seed() {
 if (d.power) for (let h = 0; h < hour; h++) todayHours[h] = Math.round((pattern[h] ?? 0) * (0.5 + Math.random() * 0.6));
     await db.createUsage(d._id, todayStr(), todayHours);
   }
+  await db.markSeeded();
 }
 
 async function simulateTick() {
