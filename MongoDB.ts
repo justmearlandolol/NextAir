@@ -16,18 +16,6 @@ export interface DeviceState {
   humidity: number;
 }
 
-export interface UserInfo {
-  _id: string;
-  email: string;
-  name: string;
-}
-
-const userSchema = new mongoose.Schema(
-  { email: { type: String, index: true }, name: String },
-  { timestamps: true }
-);
-const User = mongoose.model("User", userSchema);
-
 const deviceSchema = new mongoose.Schema(
   {
     name: String,
@@ -58,8 +46,11 @@ const usageSchema = new mongoose.Schema(
 usageSchema.index({ device: 1, date: 1 }, { unique: true });
 const Usage = mongoose.model("Usage", usageSchema);
 
-const commandSchema = new mongoose.Schema({ device: String, by: String, body: Object }, { timestamps: true });
+const commandSchema = new mongoose.Schema({ device: String, body: Object }, { timestamps: true });
 const Command = mongoose.model("Command", commandSchema);
+
+const settingSchema = new mongoose.Schema({ key: { type: String, index: true }, value: Object }, { timestamps: true });
+const Setting = mongoose.model("Setting", settingSchema);
 
 const pub = (d: any): DeviceState => ({
   _id: String(d._id),
@@ -79,17 +70,6 @@ const pub = (d: any): DeviceState => ({
 
 export async function connectDb(uri: string): Promise<void> {
   await mongoose.connect(uri);
-}
-
-export async function upsertUser(email: string, name: string): Promise<UserInfo> {
-  const doc = await User.findOneAndUpdate({ email }, { email, name }, { upsert: true, new: true });
-  return { _id: String(doc._id), email, name };
-}
-
-export async function findUserById(id: string): Promise<UserInfo | null> {
-  if (!mongoose.isValidObjectId(id)) return null;
-  const doc = await User.findById(id);
-  return doc ? { _id: String(doc._id), email: doc.email ?? "", name: doc.name ?? "" } : null;
 }
 
 export async function listDevices(): Promise<{ ssid: string; devices: DeviceState[] }> {
@@ -112,8 +92,8 @@ export async function patchDevice(
   return doc ? pub(doc) : null;
 }
 
-export async function logCommand(deviceId: string, by: string, body: Record<string, unknown>): Promise<void> {
-  await Command.create({ device: deviceId, by, body });
+export async function logCommand(deviceId: string, body: Record<string, unknown>): Promise<void> {
+  await Command.create({ device: deviceId, body });
 }
 
 export async function getUsage(deviceId: string, date: string): Promise<number[]> {
@@ -138,4 +118,26 @@ export async function createDevices(items: Array<Record<string, unknown>>): Prom
 
 export async function createUsage(deviceId: string, date: string, hours: number[]): Promise<void> {
   await Usage.create({ device: deviceId, date, hours });
+}
+
+export async function isSeeded(): Promise<boolean> {
+  return !!(await Setting.findOne({ key: "seeded" }));
+}
+
+export async function markSeeded(): Promise<void> {
+  await Setting.updateOne({ key: "seeded" }, { $set: { value: { at: new Date() } } }, { upsert: true });
+}
+
+export async function createDevice(info: Record<string, unknown>): Promise<DeviceState> {
+  const doc = await Device.create(info);
+  return pub(doc);
+}
+
+export async function deleteDevice(id: string): Promise<boolean> {
+  if (!mongoose.isValidObjectId(id)) return false;
+  const doc = await Device.findByIdAndDelete(id);
+  if (!doc) return false;
+  await Usage.deleteMany({ device: id });
+  await Command.deleteMany({ device: id });
+  return true;
 }
